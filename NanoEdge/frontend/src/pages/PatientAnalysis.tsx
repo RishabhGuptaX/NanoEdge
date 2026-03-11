@@ -56,7 +56,7 @@ export default function PatientAnalysis() {
         tobacco: form.tobacco ? 1 : 0, temperature: Number(form.temperature),
         spo2: Number(form.spo2), heartrate: Number(form.heartrate), gas: Number(form.gas),
       };
-      const res = await fetch("http://127.0.0.1:8000/predict", {
+      const res = await fetch("https://nanoedge-api.onrender.com/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
