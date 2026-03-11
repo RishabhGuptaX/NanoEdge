@@ -3,9 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import joblib
 import numpy as np
+import os
 
 app = FastAPI()
 
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,7 +16,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model = joblib.load("backend/respiratory_ai_model.pkl")
+# Get current directory
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Load ML model safely
+model_path = os.path.join(BASE_DIR, "respiratory_ai_model.pkl")
+model = joblib.load(model_path)
 
 @app.post("/predict")
 def predict(data: dict):
@@ -36,7 +43,11 @@ def predict(data: dict):
     prob = model.predict_proba(features)[0][1]
 
     return {
-        "pneumonia_risk": round(prob*100,2)
+        "pneumonia_risk": round(prob * 100, 2)
     }
 
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
+# Serve frontend (if built)
+frontend_path = os.path.join(BASE_DIR, "../frontend/dist")
+
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
