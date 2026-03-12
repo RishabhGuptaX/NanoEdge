@@ -6,7 +6,6 @@ import os
 
 app = FastAPI()
 
-# Enable CORS so frontend can call the API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,9 +14,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load ML model safely
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(BASE_DIR, "respiratory_ai_model.pkl")
+
+print("Loading model from:", model_path)
 
 model = joblib.load(model_path)
 
@@ -29,42 +29,48 @@ def home():
 
 @app.post("/predict")
 def predict(data: dict):
+    try:
 
-    features = np.array([[
-        data["age"],
-        data["sex"],
-        data["diabetes"],
-        data["hypertension"],
-        data["obesity"],
-        data["asthma"],
-        data["tobacco"],
-        data["temperature"],
-        data["spo2"],
-        data["heartrate"],
-        data["gas"]
-    ]])
+        features = np.array([[
+            float(data["age"]),
+            float(data["sex"]),
+            float(data["diabetes"]),
+            float(data["hypertension"]),
+            float(data["obesity"]),
+            float(data["asthma"]),
+            float(data["tobacco"]),
+            float(data["temperature"]),
+            float(data["spo2"]),
+            float(data["heartrate"]),
+            float(data["gas"])
+        ]])
 
-    # Model prediction
-    prob = model.predict_proba(features)[0][1]
-    risk = round(prob * 100, 2)
+        print("Input features:", features)
 
-    # Generate additional risk indicators
-    if risk < 30:
-        hypoxia = "Low"
-        asthma = "Low"
-        infection = "Low"
-    elif risk < 60:
-        hypoxia = "Moderate"
-        asthma = "Moderate"
-        infection = "Moderate"
-    else:
-        hypoxia = "High"
-        asthma = "High"
-        infection = "High"
+        prob = model.predict_proba(features)[0][1]
 
-    return {
-        "pneumonia_risk": risk,
-        "hypoxia_risk": hypoxia,
-        "asthma_attack_risk": asthma,
-        "respiratory_infection_risk": infection
-    }
+        risk = round(prob * 100, 2)
+
+        if risk < 30:
+            hypoxia = "Low"
+            asthma = "Low"
+            infection = "Low"
+        elif risk < 60:
+            hypoxia = "Moderate"
+            asthma = "Moderate"
+            infection = "Moderate"
+        else:
+            hypoxia = "High"
+            asthma = "High"
+            infection = "High"
+
+        return {
+            "pneumonia_risk": risk,
+            "hypoxia_risk": hypoxia,
+            "asthma_attack_risk": asthma,
+            "respiratory_infection_risk": infection
+        }
+
+    except Exception as e:
+        print("Prediction error:", str(e))
+        return {"error": str(e)}
