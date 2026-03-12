@@ -47,9 +47,14 @@ def predict(data: dict):
 
         print("Input features:", features)
 
-        prob = model.predict_proba(features)[0][1]
+        # Try probability prediction first
+        try:
+            prob = model.predict_proba(features)[0][1]
+        except Exception:
+            # fallback if model doesn't support predict_proba
+            prob = model.predict(features)[0]
 
-        risk = round(prob * 100, 2)
+        risk = round(float(prob) * 100, 2)
 
         if risk < 30:
             hypoxia = "Low"
@@ -73,4 +78,10 @@ def predict(data: dict):
 
     except Exception as e:
         print("Prediction error:", str(e))
-        return {"error": str(e)}
+        return {
+            "pneumonia_risk": 0,
+            "hypoxia_risk": "Unknown",
+            "asthma_attack_risk": "Unknown",
+            "respiratory_infection_risk": "Unknown",
+            "error": str(e)
+        }
