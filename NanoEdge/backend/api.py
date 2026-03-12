@@ -1,13 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import joblib
 import numpy as np
 import os
 
 app = FastAPI()
 
-# Enable CORS
+# Enable CORS so frontend can call the API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,12 +15,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Get current directory
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 # Load ML model safely
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(BASE_DIR, "respiratory_ai_model.pkl")
+
 model = joblib.load(model_path)
+
+
+@app.get("/")
+def home():
+    return {"message": "NanoEdge API is running"}
+
 
 @app.post("/predict")
 def predict(data: dict):
@@ -40,14 +44,27 @@ def predict(data: dict):
         data["gas"]
     ]])
 
+    # Model prediction
     prob = model.predict_proba(features)[0][1]
+    risk = round(prob * 100, 2)
+
+    # Generate additional risk indicators
+    if risk < 30:
+        hypoxia = "Low"
+        asthma = "Low"
+        infection = "Low"
+    elif risk < 60:
+        hypoxia = "Moderate"
+        asthma = "Moderate"
+        infection = "Moderate"
+    else:
+        hypoxia = "High"
+        asthma = "High"
+        infection = "High"
 
     return {
-        "pneumonia_risk": round(prob * 100, 2)
+        "pneumonia_risk": risk,
+        "hypoxia_risk": hypoxia,
+        "asthma_attack_risk": asthma,
+        "respiratory_infection_risk": infection
     }
-
-# Serve frontend (if built)
-frontend_path = os.path.join(BASE_DIR, "../frontend/dist")
-
-if os.path.exists(frontend_path):
-    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
